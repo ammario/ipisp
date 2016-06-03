@@ -22,7 +22,7 @@ func main() {
 		log.Fatalf("Error looking up 4.2.2.2: %v", err)
 	}
 
-	fmt.Printf("Resolving IP 4.2.2.2\n")
+	fmt.Printf("Resolved IP 4.2.2.2\n")
 	fmt.Printf("IP: %v\n", resp.IP)
 	fmt.Printf("ASN: %v\n", resp.ASN)
 	fmt.Printf("Range: %v\n", resp.Range)
@@ -30,7 +30,7 @@ func main() {
 	fmt.Printf("Registry: %v\n", resp.Registry)
 	fmt.Printf("ISP: %v\n", resp.Name.Raw)
 
-	fmt.Print("\n\nResolving AS666\n")
+	fmt.Print("\n\nResolved AS666\n")
 	resp, err = client.LookupASN(ipisp.ASN(666))
 
 	fmt.Printf("ASN: %v\n", resp.ASN)
