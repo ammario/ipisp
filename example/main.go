@@ -37,4 +37,6 @@ func main() {
 	fmt.Printf("Country: %v\n", resp.Country.Name)
 	fmt.Printf("Registry: %v\n", resp.Registry)
 	fmt.Printf("ISP: %v\n", resp.Name.Raw)
+
+	client.Close()
 }
