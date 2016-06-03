@@ -11,14 +11,13 @@ IPISP allows you to programmatically resolve an IP address's AS number, ISP name
 A more thorough example is in the examples/ folder.
 
 ```go
-	client, _ := ipisp.NewClient()
-	resp, err := client.LookupIP(net.ParseIP("4.2.2.2"))
-    
-	fmt.Printf("IP: %v\n", resp.IP)
-	fmt.Printf("ASN: %v\n", resp.ASN)
-	fmt.Printf("Range: %v\n", resp.Range)
-	fmt.Printf("Country: %v\n", resp.Country.Name)
-	fmt.Printf("Registry: %v\n", resp.Registry)
-	fmt.Printf("ISP: %v\n", resp.Name.Raw)
-
+client, _ := ipisp.NewClient()
+resp, err := client.LookupIP(net.ParseIP("4.2.2.2"))
+   
+fmt.Printf("IP: %v\n", resp.IP)
+fmt.Printf("ASN: %v\n", resp.ASN)
+fmt.Printf("Range: %v\n", resp.Range)
+fmt.Printf("Country: %v\n", resp.Country.Name)
+fmt.Printf("Registry: %v\n", resp.Registry)
+fmt.Printf("ISP: %v\n", resp.Name.Raw)
 ```
