@@ -2,9 +2,11 @@
 
 IPISP wraps [Team Cymru's](http://www.team-cymru.org/IP-ASN-mapping.html) IP to ASN service.
 
-IPISP allows you to programmatically resolve an IP address's AS number, ISP name, range, allocation time, registry, and country of registration.
+Features
+    - Programmatically resolve an IP address's AS number, ISP name, range, allocation time, registry, and country of registration.
+    - Safe for bulk usage by using Cymru's netcat interface
+    - Concurrent safe
 
-IPISP utilizes team cymru's netcat interface so it's safe for bulk usage.
 
 [Godoc](https://godoc.org/github.com/ammario/ipisp)
 
