@@ -70,6 +70,8 @@ func NewClient() (client *Client, err error) {
 
 //Close closes a client.
 func (c *Client) Close() error {
+	c.w.Write([]byte("end"))
+	c.w.Write(ncEOL)
 	return c.conn.Close()
 }
 
