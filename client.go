@@ -152,9 +152,12 @@ func (c *Client) LookupIPs(ips []net.IP) (resp []Response, err error) {
 }
 
 //LookupIP is a single IP convenience proxy of LookupIPs
-func (c *Client) LookupIP(ip net.IP) (Response, error) {
+func (c *Client) LookupIP(ip net.IP) (*Response, error) {
 	resp, err := c.LookupIPs([]net.IP{ip})
-	return resp[0], err
+	if len(resp) == 0 {
+		return nil, err
+	}
+	return &resp[0], err
 }
 
 //LookupASNs looks up ASNs. Response IP and Range fields are zeroed
