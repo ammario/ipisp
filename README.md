@@ -4,7 +4,7 @@ IPISP wraps [Team Cymru's](http://www.team-cymru.org/IP-ASN-mapping.html) IP to 
 
 Features
 - Programmatically resolve an IP address's AS number, ISP name, range, allocation time, registry, and country of registration.
-- Safe for bulk usage by using Cymru's netcat interface
+- Safe for bulk usage by using Cymru's DNS interface
 - Concurrent safe
 
 
@@ -15,7 +15,7 @@ Features
 A more thorough example is in the examples/ folder.
 
 ```go
-client, _ := ipisp.NewClient()
+client, _ := ipisp.NewDnsClient()
 resp, err := client.LookupIP(net.ParseIP("4.2.2.2"))
    
 fmt.Printf("IP: %v\n", resp.IP)

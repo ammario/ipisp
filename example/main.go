@@ -9,7 +9,8 @@ import (
 )
 
 func main() {
-	client, err := ipisp.NewClient()
+	var client ipisp.Client
+	client, err := ipisp.NewDnsClient()
 
 	if err != nil {
 		log.Fatalf("Error creating client: %v", err)

@@ -9,8 +9,8 @@ type Country struct {
 }
 
 //NewCountryFromCode returns a country from a country code
-func NewCountryFromCode(code string) *Country {
-	country := &Country{}
-	country.Name, _ = langreg.RegionName(code)
-	return country
+func NewCountryFromCode(code string) (country *Country, err error) {
+	country = &Country{}
+	country.Name, err = langreg.RegionName(code)
+	return country, err
 }
