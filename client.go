@@ -4,6 +4,7 @@ import (
 	"net"
 )
 
+//Client is a lookup client
 type Client interface {
 	LookupIPs([]net.IP) ([]Response, error)
 	LookupIP(net.IP) (*Response, error)

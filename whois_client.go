@@ -1,15 +1,16 @@
 //Package ipisp provides a wrapper to team-cymru.com IP to ASN service.
-//ipisp uses Cymru's netcat interface
 package ipisp
 
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 var ncEOL = []byte("\r\n")
@@ -27,29 +28,29 @@ const (
 	netcatASNTokensLength = 5
 )
 
-//Network addresses
+//Service address
 const (
 	cymruNetcatAddress = "whois.cymru.com:43"
 )
 
-//Client wraps the team-cyru services
-type whoisClient struct {
-	conn net.Conn
+//WhoisClient uses the whois client
+type WhoisClient struct {
+	Conn net.Conn
 	w    *bufio.Writer
 	sc   *bufio.Scanner
 	ncmu *sync.Mutex
 }
 
-//NewClient returns a pointer to a new connected IPISP client
-func NewWhoisClient() (client *whoisClient, err error) {
-	client = &whoisClient{}
-	client.conn, err = net.DialTimeout("tcp", cymruNetcatAddress, Timeout)
+//NewWhoisClient returns a pointer to a new connected whois client
+func NewWhoisClient() (client *WhoisClient, err error) {
+	client = &WhoisClient{}
+	client.Conn, err = net.DialTimeout("tcp", cymruNetcatAddress, Timeout)
 	client.ncmu = &sync.Mutex{}
 	if err != nil {
 		return
 	}
-	client.w = bufio.NewWriter(client.conn)
-	client.sc = bufio.NewScanner(client.conn)
+	client.w = bufio.NewWriter(client.Conn)
+	client.sc = bufio.NewScanner(client.Conn)
 
 	client.w.Write([]byte("begin"))
 	client.w.Write(ncEOL)
@@ -58,30 +59,30 @@ func NewWhoisClient() (client *whoisClient, err error) {
 
 	err = client.w.Flush()
 	if err != nil {
-		return
+		return client, errors.Wrap(err, "failed to write to client")
 	}
 
 	//Discard first hello line
 	client.sc.Scan()
 	client.sc.Bytes()
-	err = client.sc.Err()
-	return
+	return client, errors.Wrap(client.sc.Err(), "failed to read from scanner")
 }
 
 //Close closes a client.
-func (c *whoisClient) Close() error {
+func (c *WhoisClient) Close() error {
 	c.w.Write([]byte("end"))
 	c.w.Write(ncEOL)
-	return c.conn.Close()
+	return c.Conn.Close()
 }
 
 //LookupIPs looks up IPs and returns a slice of responses the same size as the input slice of IPs
 //The response slice will be in the same order as the input IPs
-func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
+func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 	resp = make([]Response, 0, len(ips))
 
 	c.ncmu.Lock()
 	defer c.ncmu.Unlock()
+
 	for _, ip := range ips {
 		c.w.WriteString(ip.String())
 		c.w.Write(ncEOL)
@@ -131,16 +132,16 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 		}
 
 		//Read country
-		re.Country, _ = NewCountryFromCode(string(tokens[3]))
+		re.Country = strings.TrimSpace(string(tokens[3]))
 
 		//Read registry
-		re.Registry = string(tokens[4])
+		re.Registry = string(bytes.ToUpper(tokens[4]))
 
 		//Read allocated. Ignore error as a lot of entries don't have an allocated value.
-		re.Allocated, _ = time.Parse("2006-01-02", string(tokens[5]))
+		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[5]))
 
 		//Read name
-		re.Name = NewName(string(tokens[6]))
+		re.Name = ParseName(string(tokens[6]))
 
 		//Add to response slice
 		resp = append(resp, re)
@@ -152,7 +153,7 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 }
 
 //LookupIP is a single IP convenience proxy of LookupIPs
-func (c *whoisClient) LookupIP(ip net.IP) (*Response, error) {
+func (c *WhoisClient) LookupIP(ip net.IP) (*Response, error) {
 	resp, err := c.LookupIPs([]net.IP{ip})
 	if len(resp) == 0 {
 		return nil, err
@@ -161,7 +162,7 @@ func (c *whoisClient) LookupIP(ip net.IP) (*Response, error) {
 }
 
 //LookupASNs looks up ASNs. Response IP and Range fields are zeroed
-func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
+func (c *WhoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 	resp = make([]Response, 0, len(asns))
 
 	c.ncmu.Lock()
@@ -185,7 +186,7 @@ func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 	for !finished && c.sc.Scan() {
 		raw = c.sc.Bytes()
 		if bytes.HasPrefix(raw, []byte("Error: ")) {
-			return resp, errors.New(string(bytes.TrimSpace(bytes.TrimLeft(raw, "Error: "))))
+			return resp, errors.Errorf("recieved err: %v", raw)
 		}
 		tokens = bytes.Split(raw, []byte{'|'})
 
@@ -202,21 +203,17 @@ func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 
 		//Read ASN
 		if asn, err = strconv.Atoi(string(tokens[0])); err != nil {
-			return
+			return nil, errors.Wrapf(err, "failed to atoi %s", tokens[0])
 		}
 		re.ASN = ASN(asn)
-
 		//Read country
-		re.Country, _ = NewCountryFromCode(string(tokens[1]))
-
+		re.Country = string(tokens[1])
 		//Read registry
-		re.Registry = string(tokens[2])
-
+		re.Registry = string(bytes.ToUpper(tokens[2]))
 		//Read allocated. Ignore error as a lot of entries don't have an allocated value.
-		re.Allocated, _ = time.Parse("2006-01-02", string(tokens[3]))
-
+		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[3]))
 		//Read name
-		re.Name = NewName(string(tokens[4]))
+		re.Name = ParseName(string(tokens[4]))
 
 		//Add to response slice
 		resp = append(resp, re)
@@ -228,7 +225,7 @@ func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 }
 
 //LookupASN is a single ASN convenience proxy of LookupASNs
-func (c *whoisClient) LookupASN(asn ASN) (*Response, error) {
+func (c *WhoisClient) LookupASN(asn ASN) (*Response, error) {
 	resp, err := c.LookupASNs([]ASN{asn})
 	return &resp[0], err
 }

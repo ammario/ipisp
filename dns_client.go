@@ -6,18 +6,21 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const hexDigit = "0123456789abcdef"
 
-type dnsClient struct {
+type DNSClient struct {
 }
 
-func NewDnsClient() (client *dnsClient, err error) {
-	return &dnsClient{}, nil
+//NewDNSClient returns a dns client
+func NewDNSClient() (client *DNSClient, err error) {
+	return &DNSClient{}, nil
 }
 
-func (c *dnsClient) LookupIPs(ips []net.IP) ([]Response, error) {
+func (c *DNSClient) LookupIPs(ips []net.IP) ([]Response, error) {
 	ret := make([]Response, len(ips))
 
 	for _, ip := range ips {
@@ -30,7 +33,7 @@ func (c *dnsClient) LookupIPs(ips []net.IP) ([]Response, error) {
 	return ret, nil
 }
 
-func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
+func (c *DNSClient) LookupIP(ip net.IP) (*Response, error) {
 	lookupName, err := c.getLookupName(ip)
 	txts, err := net.LookupTXT(lookupName)
 	if err != nil {
@@ -48,20 +51,17 @@ func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 
 		ret := &Response{
 			IP:       ip,
-			Registry: values[3],
+			Registry: strings.ToUpper(values[3]),
 		}
 
 		var err error
 		asn, err := strconv.Atoi(values[0])
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse ASN (%s): %s", values[0], err)
+			return nil, errors.Wrapf(err, "Could not parse ASN (%s): %s", values[0])
 		}
 		ret.ASN = ASN(asn)
 
-		ret.Country, err = NewCountryFromCode(values[2])
-		if err != nil {
-			return nil, fmt.Errorf("Could not parse CountryCode (%s): %s", values[2], err)
-		}
+		ret.Country = strings.TrimSpace(values[2])
 
 		_, ret.Range, err = net.ParseCIDR(values[1])
 		if err != nil {
@@ -69,7 +69,7 @@ func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 		}
 
 		if values[4] != "" { // There's not always an allocation date available :(
-			ret.Allocated, err = time.Parse("2006-01-02", values[4])
+			ret.AllocatedAt, err = time.Parse("2006-01-02", values[4])
 			if err != nil {
 				return nil, fmt.Errorf("Could not parse date (%s): %s", values[4], err)
 			}
@@ -89,7 +89,7 @@ func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 	return nil, fmt.Errorf("No records found")
 }
 
-func (c *dnsClient) LookupASNs(asns []ASN) ([]Response, error) {
+func (c *DNSClient) LookupASNs(asns []ASN) ([]Response, error) {
 	ret := make([]Response, len(asns))
 
 	for _, asn := range asns {
@@ -102,7 +102,7 @@ func (c *dnsClient) LookupASNs(asns []ASN) ([]Response, error) {
 	return ret, nil
 }
 
-func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
+func (c *DNSClient) LookupASN(asn ASN) (*Response, error) {
 	txts, err := net.LookupTXT(asn.String() + ".asn.cymru.com")
 	if err != nil {
 		return nil, err
@@ -117,35 +117,32 @@ func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
 			values[k] = strings.TrimSpace(values[k])
 		}
 
-		ret := &Response{
+		resp := &Response{
 			ASN:      asn,
-			Registry: values[2],
-			Name:     NewName(values[4]),
+			Registry: strings.ToUpper(values[2]),
+			Name:     ParseName(values[4]),
 		}
 
-		ret.Country, err = NewCountryFromCode(values[1])
-		if err != nil {
-			return nil, fmt.Errorf("Could not parse CountryCode (%s): %s", values[1], err)
-		}
+		resp.Country = values[1]
 
 		if values[3] != "" {
-			ret.Allocated, err = time.Parse("2006-01-02", values[3])
+			resp.AllocatedAt, err = time.Parse("2006-01-02", values[3])
 			if err != nil {
 				return nil, fmt.Errorf("Could not parse date (%s): %s", values[3], err)
 			}
 		}
 
-		return ret, nil
+		return resp, nil
 	}
 
 	return nil, fmt.Errorf("No records found")
 }
 
-func (c *dnsClient) Close() error {
+func (c *DNSClient) Close() error {
 	return nil
 }
 
-func (c *dnsClient) getLookupName(ip net.IP) (string, error) {
+func (c *DNSClient) getLookupName(ip net.IP) (string, error) {
 	if p4 := ip.To4(); len(p4) == net.IPv4len {
 		return fmt.Sprintf("%d.%d.%d.%d.origin.asn.cymru.com", ip[15], ip[14], ip[13], ip[12]), nil
 	}
