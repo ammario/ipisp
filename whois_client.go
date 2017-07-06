@@ -52,6 +52,8 @@ func NewWhoisClient() (client *WhoisClient, err error) {
 	client.w = bufio.NewWriter(client.Conn)
 	client.sc = bufio.NewScanner(client.Conn)
 
+	client.Conn.SetDeadline(time.Now().Add(time.Second * 15))
+
 	client.w.Write([]byte("begin"))
 	client.w.Write(ncEOL)
 	client.w.Write([]byte("verbose"))
@@ -90,6 +92,9 @@ func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 			return resp, err
 		}
 	}
+
+	c.Conn.SetDeadline(time.Now().Add(time.Second*5 + (time.Second * time.Duration(len(ips)))))
+
 	//Raw response
 	var raw []byte
 	var tokens [][]byte
@@ -174,6 +179,8 @@ func (c *WhoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 			return resp, err
 		}
 	}
+
+	c.Conn.SetDeadline(time.Now().Add(time.Second*5 + (time.Second * time.Duration(len(asns)))))
 
 	//Raw response
 	var raw []byte
