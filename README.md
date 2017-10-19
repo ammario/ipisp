@@ -16,7 +16,7 @@ Features
 A more thorough example is in the examples/ folder.
 
 ```go
-client,  := ipisp.NewDnsClient()
+client, _ := ipisp.NewDNSClient()
 
 resp, _ := client.LookupIP(net.ParseIP("4.2.2.2"))
 
