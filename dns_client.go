@@ -57,7 +57,7 @@ func (c *DNSClient) LookupIP(ip net.IP) (*Response, error) {
 		var err error
 		asn, err := strconv.Atoi(values[0])
 		if err != nil {
-			return nil, errors.Wrapf(err, "Could not parse ASN (%s): %s", values[0])
+			return nil, errors.Wrapf(err, "Could not parse ASN (%s)", values[0])
 		}
 		ret.ASN = ASN(asn)
 
