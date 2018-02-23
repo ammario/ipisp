@@ -98,7 +98,6 @@ func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 	//Raw response
 	var raw []byte
 	var tokens [][]byte
-	var asn int
 
 	var finished bool
 
@@ -122,11 +121,15 @@ func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 
 		re := Response{}
 
-		//Read ASN
-		if asn, err = strconv.Atoi(string(tokens[0])); err != nil {
-			return
+		// Read ASN
+		asnList := string(tokens[0])
+
+		var asns []ASN
+		asns, err = parseASNs(asnList)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse asn list %v", asnList)
 		}
-		re.ASN = ASN(asn)
+		re.ASN = asns[0]
 
 		//Read IP
 		re.IP = net.ParseIP(string(tokens[1]))

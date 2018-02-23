@@ -14,11 +14,12 @@ type ASN int
 func ParseASN(asn string) (ASN, error) {
 	//Make case insensitive
 	asn = strings.ToUpper(asn)
-	if len(asn) > 2 {
-		nn, err := strconv.Atoi(asn[2:])
-		return ASN(nn), errors.Wrap(err, "failed to conv into to string")
+	if len(asn) > 2 && asn[:2] == "AS" {
+		asn = asn[2:]
 	}
-	return 0, errors.Errorf("invalid asn")
+
+	nn, err := strconv.Atoi(asn)
+	return ASN(nn), errors.Wrap(err, "failed to conv into to string")
 }
 
 //String implements fmt.Stringer
