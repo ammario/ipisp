@@ -11,7 +11,7 @@ type Name struct {
 
 //ParseName returns a pointer to a new name
 func ParseName(raw string) Name {
-	tokens := strings.Split(raw, "-")
+	tokens := strings.Split(raw, " - ")
 	if len(tokens) == 0 {
 		tokens = []string{raw}
 	}
