@@ -39,6 +39,20 @@ func testClient(c Client, t *testing.T) {
 			assert.Equal(t, expRange, resp.Range)
 		})
 
+		t.Run("Raw IP", func(t *testing.T) {
+			ip := net.IP{8, 8, 8, 8}
+			resp, err := c.LookupIP(ip)
+			require.NoError(t, err)
+
+			assert.Equal(t, ASN(15169), resp.ASN)
+			assert.Contains(t, resp.Name.Long, "Google")
+			assert.Equal(t, "US", resp.Country)
+			assert.Equal(t, "ARIN", resp.Registry)
+			_, expRange, err := net.ParseCIDR("8.8.8.0/24")
+			require.NoError(t, err)
+			assert.Equal(t, expRange, resp.Range)
+		})
+
 		t.Run("Multiple ASNs", func(t *testing.T) {
 			ip := net.ParseIP("103.235.224.237") // See #6
 			resp, err := c.LookupIP(ip)

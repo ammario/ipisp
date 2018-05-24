@@ -142,22 +142,21 @@ func (c *DNSClient) Close() error {
 }
 
 func (c *DNSClient) getLookupName(ip net.IP) (string, error) {
-	if p4 := ip.To4(); len(p4) == net.IPv4len {
-		return fmt.Sprintf("%d.%d.%d.%d.origin.asn.cymru.com", ip[15], ip[14], ip[13], ip[12]), nil
-	}
-
-	if len(ip) != net.IPv6len {
-		return "", fmt.Errorf("Could not parse IP. Invalid length (%d)", len(ip))
-	}
-
-	sep := []byte(`.`)[0]
-	b := make([]byte, 0, 64)
-	for i := 16; i >= 2; i -= 2 {
-		for j := 0; j <= 3; j++ {
-			v := ((uint32(ip[i-2]) << 8) | uint32(ip[i-1])) >> uint(j*4)
-			b = append(b, hexDigit[v&0xf], sep)
+	switch {
+	case len(ip) == net.IPv4len || ip.To4() != nil:
+		ip = ip.To4()
+		return fmt.Sprintf("%d.%d.%d.%d.origin.asn.cymru.com", ip[3], ip[2], ip[1], ip[0]), nil
+	case len(ip) == net.IPv6len:
+		sep := []byte(`.`)[0]
+		b := make([]byte, 0, 64)
+		for i := 16; i >= 2; i -= 2 {
+			for j := 0; j <= 3; j++ {
+				v := ((uint32(ip[i-2]) << 8) | uint32(ip[i-1])) >> uint(j*4)
+				b = append(b, hexDigit[v&0xf], sep)
+			}
 		}
+		return fmt.Sprintf("%s.origin6.asn.cymru.com", (b[:63])), nil
+	default:
+		return "", errors.New("invalid IP length")
 	}
-
-	return fmt.Sprintf("%s.origin6.asn.cymru.com", (b[:63])), nil
 }
