@@ -77,8 +77,6 @@ func (c *WhoisClient) Close() error {
 	return c.Conn.Close()
 }
 
-// LookupIPs looks up IPs and returns a slice of responses the same size as the input slice of IPs
-// The response slice will be in the same order as the input IPs
 func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 	resp = make([]Response, 0, len(ips))
 

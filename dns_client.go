@@ -14,9 +14,8 @@ const hexDigit = "0123456789abcdef"
 type DNSClient struct {
 }
 
-// NewDNSClient returns a dns client
-func NewDNSClient() (client *DNSClient, err error) {
-	return &DNSClient{}, nil
+// NewDNSClient returns a DNS lookup client.
+// It is recommended to use this client for many individual lookups.
 }
 
 func (c *DNSClient) LookupIPs(ips []net.IP) ([]Response, error) {

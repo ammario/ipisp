@@ -7,10 +7,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ASN contains an Autonomous Systems Number
+// ASN represents an Autonomous Systems Number.
+// See https://en.wikipedia.org/wiki/Autonomous_system_(Internet).
 type ASN int
 
-// ParseASN parses a string like AS2341 into an ASN
+// ParseASN parses a string like `AS2341` into ASN `2341`.
 func ParseASN(asn string) (ASN, error) {
 	// Make case insensitive
 	asn = strings.ToUpper(asn)
@@ -22,7 +23,7 @@ func ParseASN(asn string) (ASN, error) {
 	return ASN(nn), errors.Wrap(err, "failed to conv into to string")
 }
 
-// String implements fmt.Stringer
+// String represents an ASN like `5544`` as `AS5544`.`
 func (a ASN) String() string {
 	return "AS" + strconv.Itoa(int(a))
 }

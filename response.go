@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Response contains a response from Cymru
+// Response contains a response from Cymru.
 type Response struct {
 	IP          net.IP
 	ASN         ASN

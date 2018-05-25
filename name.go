@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Name contains an IPISP ISP name
+// Name contains an ISP's name.
 type Name struct {
 	Raw   string
 	Short string
@@ -19,7 +19,9 @@ func stripAS(raw string) string {
 	return stripASRegex.ReplaceAllString(raw, "")
 }
 
-// ParseName returns a pointer to a new name
+// ParseName attempts to parse the provided raw name.
+// The returned Short and Long names are subject to change. Use Raw if you
+// require determinism.
 func ParseName(raw string) Name {
 	n := Name{
 		Raw:   raw,
