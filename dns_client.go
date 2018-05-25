@@ -14,7 +14,7 @@ const hexDigit = "0123456789abcdef"
 type DNSClient struct {
 }
 
-//NewDNSClient returns a dns client
+// NewDNSClient returns a dns client
 func NewDNSClient() (client *DNSClient, err error) {
 	return &DNSClient{}, nil
 }

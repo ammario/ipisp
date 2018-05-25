@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-//Response contains a response from Cymru
+// Response contains a response from Cymru
 type Response struct {
 	IP          net.IP
 	ASN         ASN
@@ -18,7 +18,7 @@ type Response struct {
 	AllocatedAt time.Time
 }
 
-//String provides an easy to read version of r
+// String provides an easy to read version of r
 func (r *Response) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteRune('\n')

@@ -2,14 +2,14 @@ package ipisp
 
 import "strings"
 
-//Name contains an IPISP ISP name
+// Name contains an IPISP ISP name
 type Name struct {
 	Raw   string
 	Short string
 	Long  string
 }
 
-//ParseName returns a pointer to a new name
+// ParseName returns a pointer to a new name
 func ParseName(raw string) Name {
 	tokens := strings.Split(raw, "-")
 	if len(tokens) == 0 {
@@ -25,7 +25,7 @@ func ParseName(raw string) Name {
 	}
 }
 
-//String returns a human friendly representation of n
+// String returns a human friendly representation of n
 func (n Name) String() string {
 	return n.Long
 }

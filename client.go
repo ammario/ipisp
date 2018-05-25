@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//Client is a lookup client
+// Client is a lookup client
 type Client interface {
 	LookupIPs([]net.IP) ([]Response, error)
 	LookupIP(net.IP) (*Response, error)
