@@ -1,4 +1,4 @@
-// Package ipisp provides a wrapper to team-cymru.com IP to ASN service.
+// Package ipisp provides a wrapper to team-cymru.com's IP to ASN service.
 package ipisp
 
 import (
