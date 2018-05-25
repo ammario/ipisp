@@ -11,14 +11,16 @@ import (
 
 const hexDigit = "0123456789abcdef"
 
-type DNSClient struct {
+type dnsClient struct {
 }
 
 // NewDNSClient returns a DNS lookup client.
 // It is recommended to use this client for many individual lookups.
+func NewDNSClient() (Client, error) {
+	return &dnsClient{}, nil
 }
 
-func (c *DNSClient) LookupIPs(ips []net.IP) ([]Response, error) {
+func (c *dnsClient) LookupIPs(ips []net.IP) ([]Response, error) {
 	ret := make([]Response, len(ips))
 
 	for _, ip := range ips {
@@ -31,7 +33,7 @@ func (c *DNSClient) LookupIPs(ips []net.IP) ([]Response, error) {
 	return ret, nil
 }
 
-func (c *DNSClient) LookupIP(ip net.IP) (*Response, error) {
+func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 	lookupName, err := c.getLookupName(ip)
 	txts, err := net.LookupTXT(lookupName)
 	if err != nil {
@@ -87,7 +89,7 @@ func (c *DNSClient) LookupIP(ip net.IP) (*Response, error) {
 	return nil, fmt.Errorf("No records found")
 }
 
-func (c *DNSClient) LookupASNs(asns []ASN) ([]Response, error) {
+func (c *dnsClient) LookupASNs(asns []ASN) ([]Response, error) {
 	ret := make([]Response, len(asns))
 
 	for _, asn := range asns {
@@ -100,7 +102,7 @@ func (c *DNSClient) LookupASNs(asns []ASN) ([]Response, error) {
 	return ret, nil
 }
 
-func (c *DNSClient) LookupASN(asn ASN) (*Response, error) {
+func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
 	txts, err := net.LookupTXT(asn.String() + ".asn.cymru.com")
 	if err != nil {
 		return nil, err
@@ -136,11 +138,11 @@ func (c *DNSClient) LookupASN(asn ASN) (*Response, error) {
 	return nil, fmt.Errorf("No records found")
 }
 
-func (c *DNSClient) Close() error {
+func (c *dnsClient) Close() error {
 	return nil
 }
 
-func (c *DNSClient) getLookupName(ip net.IP) (string, error) {
+func (c *dnsClient) getLookupName(ip net.IP) (string, error) {
 	switch {
 	case len(ip) == net.IPv4len || ip.To4() != nil:
 		ip = ip.To4()

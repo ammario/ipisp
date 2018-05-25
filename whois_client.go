@@ -33,21 +33,24 @@ const (
 	cymruNetcatAddress = "whois.cymru.com:43"
 )
 
-// WhoisClient uses the whois client
-type WhoisClient struct {
+// whoisClient uses the whois client
+type whoisClient struct {
 	Conn net.Conn
 	w    *bufio.Writer
 	sc   *bufio.Scanner
 	ncmu *sync.Mutex
 }
 
-// NewWhoisClient returns a pointer to a new connected whois client
-func NewWhoisClient() (client *WhoisClient, err error) {
-	client = &WhoisClient{}
+// NewWhoisClient returns a connected WHOIS client.
+// This client should be used for bulk lookups.
+func NewWhoisClient() (Client, error) {
+	var err error
+
+	client := &whoisClient{}
 	client.Conn, err = net.DialTimeout("tcp", cymruNetcatAddress, Timeout)
 	client.ncmu = &sync.Mutex{}
 	if err != nil {
-		return
+		return nil, errors.WithStack(err)
 	}
 	client.w = bufio.NewWriter(client.Conn)
 	client.sc = bufio.NewScanner(client.Conn)
@@ -70,14 +73,14 @@ func NewWhoisClient() (client *WhoisClient, err error) {
 	return client, errors.Wrap(client.sc.Err(), "failed to read from scanner")
 }
 
-// Close closes a client.
-func (c *WhoisClient) Close() error {
+// Close closes the client.
+func (c *whoisClient) Close() error {
 	c.w.Write([]byte("end"))
 	c.w.Write(ncEOL)
 	return c.Conn.Close()
 }
 
-func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
+func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 	resp = make([]Response, 0, len(ips))
 
 	c.ncmu.Lock()
@@ -159,7 +162,7 @@ func (c *WhoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 }
 
 // LookupIP is a single IP convenience proxy of LookupIPs
-func (c *WhoisClient) LookupIP(ip net.IP) (*Response, error) {
+func (c *whoisClient) LookupIP(ip net.IP) (*Response, error) {
 	resp, err := c.LookupIPs([]net.IP{ip})
 	if len(resp) == 0 {
 		return nil, err
@@ -168,7 +171,7 @@ func (c *WhoisClient) LookupIP(ip net.IP) (*Response, error) {
 }
 
 // LookupASNs looks up ASNs. Response IP and Range fields are zeroed
-func (c *WhoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
+func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 	resp = make([]Response, 0, len(asns))
 
 	c.ncmu.Lock()
@@ -233,7 +236,7 @@ func (c *WhoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 }
 
 // LookupASN is a single ASN convenience proxy of LookupASNs
-func (c *WhoisClient) LookupASN(asn ASN) (*Response, error) {
+func (c *whoisClient) LookupASN(asn ASN) (*Response, error) {
 	resp, err := c.LookupASNs([]ASN{asn})
 	return &resp[0], err
 }
