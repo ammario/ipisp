@@ -20,7 +20,7 @@ func NewDNSClient() (client *DNSClient, err error) {
 }
 
 func (c *DNSClient) LookupIPs(ips []net.IP) ([]Response, error) {
-	ret := make([]Response, len(ips))
+	var ret []Response
 
 	for _, ip := range ips {
 		resp, err := c.LookupIP(ip)
