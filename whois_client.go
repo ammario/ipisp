@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -141,7 +140,7 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 		}
 
 		// Read country
-		re.Country = strings.TrimSpace(string(tokens[3]))
+		re.Country = string(bytes.TrimSpace(tokens[3]))
 
 		// Read registry
 		re.Registry = string(bytes.ToUpper(tokens[4]))
