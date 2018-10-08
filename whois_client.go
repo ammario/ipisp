@@ -74,8 +74,12 @@ func NewWhoisClient() (Client, error) {
 
 // Close closes the client.
 func (c *whoisClient) Close() error {
+	c.Conn.SetWriteDeadline(time.Now().Add(time.Second))
+
 	c.w.Write([]byte("end"))
 	c.w.Write(ncEOL)
+	// This error is not important, because the previous are a courtesy.
+	c.w.Flush()
 	return c.Conn.Close()
 }
 
