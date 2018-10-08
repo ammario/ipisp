@@ -54,12 +54,12 @@ func testClient(c Client, t *testing.T) {
 		})
 
 		t.Run("Multiple ASNs", func(t *testing.T) {
+			// TODO: find an IP address which changes hands less frequently.
 			ip := net.ParseIP("103.235.224.237") // See #6
 			resp, err := c.LookupIP(ip)
 			require.NoError(t, err)
-			assert.Equal(t, ASN(4808), resp.ASN)
+			assert.Equal(t, ASN(23724), resp.ASN)
 		})
-
 	})
 }
 
