@@ -139,7 +139,14 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 		re.IP = net.ParseIP(string(tokens[1]))
 
 		// Read range
-		if _, re.Range, err = net.ParseCIDR(string(tokens[2])); err != nil {
+		bgpPrefix := string(tokens[2])
+		// Account for 'NA' BGP Prefix responses from the API
+		// More info: https://github.com/ammario/ipisp/issues/13
+		if bgpPrefix == "NA" {
+			bgpPrefix = re.IP.String() + "/32"
+		}
+
+		if _, re.Range, err = net.ParseCIDR(bgpPrefix); err != nil {
 			return
 		}
 
