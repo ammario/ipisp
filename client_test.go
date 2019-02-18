@@ -54,6 +54,8 @@ func testClient(c Client, t *testing.T) {
 		})
 
 		t.Run("Multiple ASNs", func(t *testing.T) {
+			t.Skip("This test is too flakey at the moment because the IP changes owners.")
+
 			// TODO: find an IP address which changes hands less frequently.
 			ip := net.ParseIP("103.235.224.237") // See #6
 			resp, err := c.LookupIP(ip)
