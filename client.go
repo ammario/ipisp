@@ -7,6 +7,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	// ErrUnassigned is returned if an IP address is not assigned.
+	// See https://en.wikipedia.org/wiki/Reserved_IP_addresses for some example ranges.
+	ErrUnassigned = errors.New("address is unassigned")
+)
+
 // Client represents an IP or ASN lookup client.
 type Client interface {
 	// LookupIPs looks up IPs and returns a slice of responses the same size as the input slice of IPs
