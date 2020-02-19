@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ncEOL = []byte("\r\n")
 
 // Timeout is the TCP connection timeout
 var Timeout = time.Second * 10
@@ -24,11 +23,6 @@ var (
 const (
 	netcatIPTokensLength  = 7
 	netcatASNTokensLength = 5
-)
-
-// Service address
-const (
-	cymruNetcatAddress = "whois.cymru.com:43"
 )
 
 // whoisClient uses the whois client
@@ -56,9 +50,9 @@ func NewWhoisClient() (Client, error) {
 	client.Conn.SetDeadline(time.Now().Add(time.Second * 15))
 
 	client.w.Write([]byte("begin"))
-	client.w.Write(ncEOL)
+	client.w.Write(bulkEOL)
 	client.w.Write([]byte("verbose"))
-	client.w.Write(ncEOL)
+	client.w.Write(bulkEOL)
 
 	err = client.w.Flush()
 	if err != nil {
@@ -70,17 +64,7 @@ func NewWhoisClient() (Client, error) {
 	return client, errors.Wrap(client.sc.Err(), "failed to read from scanner")
 }
 
-// Close closes the client.
-func (c *whoisClient) Close() error {
-	// Only the error from Conn.Close is important because
-	// these messages are sent out of courtesy.
-	c.Conn.SetWriteDeadline(time.Now().Add(time.Second))
 
-	c.w.Write([]byte("end"))
-	c.w.Write(ncEOL)
-	c.w.Flush()
-	return c.Conn.Close()
-}
 
 func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 	resp = make([]Response, 0, len(ips))
@@ -90,7 +74,7 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 
 	for _, ip := range ips {
 		c.w.WriteString(ip.String())
-		c.w.Write(ncEOL)
+		c.w.Write(bulkEOL)
 		if err = c.w.Flush(); err != nil {
 			return resp, err
 		}
@@ -191,7 +175,7 @@ func (c *whoisClient) LookupASNs(asns []ASN) (resp []Response, err error) {
 	defer c.ncmu.Unlock()
 	for _, asn := range asns {
 		c.w.WriteString(asn.String())
-		c.w.Write(ncEOL)
+		c.w.Write(bulkEOL)
 		if err = c.w.Flush(); err != nil {
 			return resp, err
 		}

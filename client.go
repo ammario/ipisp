@@ -1,7 +1,6 @@
 package ipisp
 
 import (
-	"net"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -13,15 +12,21 @@ var (
 	ErrUnassigned = errors.New("address is unassigned")
 )
 
-// Client represents an IP or ASN lookup client.
-type Client interface {
-	// LookupIPs looks up IPs and returns a slice of responses the same size as the input slice of IPs
-	// in the same order.
-	LookupIPs([]net.IP) ([]Response, error)
-	LookupIP(net.IP) (*Response, error)
-	LookupASNs([]ASN) ([]Response, error)
-	LookupASN(ASN) (*Response, error)
-	Close() error
+
+
+
+// LookupIP performs a lookup using the DNS client.
+// Please use the BulkClient if you're looking up more than
+// one address at a time. The service may ban you, otherwise.
+func LookupIP(ip string) (*Response, error) {
+
+}
+
+// LookupASN performs a lookup using the DNS client.
+// Please use the BulkClient if you're looking up more than
+// one address at a time. The service may ban you, otherwise.
+func LookupASN(asn string) (*Response, error) {
+
 }
 
 // parseASNs parses an ASN list like "1024 1111 11202".
