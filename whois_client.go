@@ -26,11 +26,6 @@ const (
 	netcatASNTokensLength = 5
 )
 
-// Service address
-const (
-	cymruNetcatAddress = "whois.cymru.com:43"
-)
-
 // whoisClient uses the whois client
 type whoisClient struct {
 	Conn net.Conn
