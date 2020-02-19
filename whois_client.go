@@ -67,7 +67,6 @@ func NewWhoisClient() (Client, error) {
 
 	// Discard first hello line
 	client.sc.Scan()
-	client.sc.Bytes()
 	return client, errors.Wrap(client.sc.Err(), "failed to read from scanner")
 }
 
@@ -134,6 +133,10 @@ func (c *whoisClient) LookupIPs(ips []net.IP) (resp []Response, err error) {
 			return nil, errors.Wrapf(err, "failed to parse asn list %v", asnList)
 		}
 		re.ASN = asns[0]
+		if re.ASN == ASN(0) {
+			// This IP doesn't exist.
+			continue
+		}
 
 		// Read IP
 		re.IP = net.ParseIP(string(tokens[1]))
