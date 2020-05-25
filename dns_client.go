@@ -21,7 +21,7 @@ func NewDNSClient() (Client, error) {
 }
 
 func (c *dnsClient) LookupIPs(ips []net.IP) ([]Response, error) {
-	ret := make([]Response, len(ips))
+	ret := make([]Response, 0, len(ips))
 
 	for _, ip := range ips {
 		resp, err := c.LookupIP(ip)
