@@ -1,6 +1,7 @@
 package ipisp
 
 import (
+	"github.com/pkg/errors"
 	"net"
 	"reflect"
 	"testing"
@@ -61,6 +62,18 @@ func testClient(c Client, t *testing.T) {
 			resp, err := c.LookupIP(ip)
 			require.NoError(t, err)
 			assert.Equal(t, ASN(23724), resp.ASN)
+		})
+
+		t.Run("Unassigned", func(t *testing.T) {
+			// See #17
+
+			// 0.0.0.0/8 is unassigned.
+			ip := net.ParseIP("0.2.2.2")
+			_, err := c.LookupIP(ip)
+			require.Error(t, err)
+			if errors.Cause(err) != ErrUnassigned {
+				t.Fatalf("expected cause of %q to be %q", err, ErrUnassigned)
+			}
 		})
 	})
 }
