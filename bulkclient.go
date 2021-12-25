@@ -28,7 +28,7 @@ const (
 
 // BulkClient uses the WHOIS service to conduct bulk lookups.
 type BulkClient struct {
-	Conn net.Conn
+	conn net.Conn
 }
 
 // DialBulkClient returns a connected WHOIS client.
@@ -38,22 +38,22 @@ func DialBulkClient(ctx context.Context) (*BulkClient, error) {
 
 	client := &BulkClient{}
 	var d net.Dialer
-	client.Conn, err = d.DialContext(ctx, "tcp", cymruNetcatAddress)
+	client.conn, err = d.DialContext(ctx, "tcp", cymruNetcatAddress)
 	if err != nil {
 		return nil, fmt.Errorf("dial: %w", err)
 	}
 
-	client.Conn.Write([]byte("begin"))
-	client.Conn.Write(bulkEOL)
-	client.Conn.Write([]byte("verbose"))
-	client.Conn.Write(bulkEOL)
+	client.conn.Write([]byte("begin"))
+	client.conn.Write(bulkEOL)
+	client.conn.Write([]byte("verbose"))
+	client.conn.Write(bulkEOL)
 
-	sc := bufio.NewScanner(client.Conn)
+	sc := bufio.NewScanner(client.conn)
 
 	// Discard first hello line.
 	sc.Scan()
 	if sc.Err() != nil {
-		client.Conn.Close()
+		client.conn.Close()
 		return nil, fmt.Errorf("scan: %w", err)
 	}
 
@@ -62,8 +62,8 @@ func DialBulkClient(ctx context.Context) (*BulkClient, error) {
 
 func (c *BulkClient) LookupIPs(ips ...net.IP) ([]Response, error) {
 	var (
-		w  = bufio.NewWriter(c.Conn)
-		sc = bufio.NewScanner(c.Conn)
+		w  = bufio.NewWriter(c.conn)
+		sc = bufio.NewScanner(c.conn)
 	)
 	var (
 		resp = make([]Response, 0, len(ips))
@@ -152,8 +152,8 @@ func (c *BulkClient) LookupIPs(ips ...net.IP) ([]Response, error) {
 // LookupASNs looks up ASNs. Response IP and Range fields are zeroed
 func (c *BulkClient) LookupASNs(asns ...ASN) ([]Response, error) {
 	var (
-		w  = bufio.NewWriter(c.Conn)
-		sc = bufio.NewScanner(c.Conn)
+		w  = bufio.NewWriter(c.conn)
+		sc = bufio.NewScanner(c.conn)
 	)
 	var (
 		resp = make([]Response, 0, len(asns))
@@ -168,7 +168,7 @@ func (c *BulkClient) LookupASNs(asns ...ASN) ([]Response, error) {
 		}
 	}
 
-	c.Conn.SetDeadline(time.Now().Add(time.Second*5 + (time.Second * time.Duration(len(asns)))))
+	c.conn.SetDeadline(time.Now().Add(time.Second*5 + (time.Second * time.Duration(len(asns)))))
 
 	// Raw response
 	var raw []byte
@@ -220,5 +220,5 @@ func (c *BulkClient) LookupASNs(asns ...ASN) ([]Response, error) {
 }
 
 func (c *BulkClient) Close() error {
-	return c.Conn.Close()
+	return c.conn.Close()
 }
