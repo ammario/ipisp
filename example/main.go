@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -9,21 +10,15 @@ import (
 )
 
 func main() {
-	client, err := ipisp.NewDNSClient()
+	resp, err := ipisp.LookupIP(context.Background(), net.ParseIP("4.2.2.2"))
 	if err != nil {
-		log.Fatalf("Failed to create client: %v", err)
+		log.Fatalf("lookup 4.2.2.2: %v", err)
 	}
-	defer client.Close()
+	fmt.Printf("resolved IP 4.2.2.2: %+v\n", resp)
 
-	resp, err := client.LookupIP(net.ParseIP("4.2.2.2"))
+	resp, err = ipisp.LookupASN(ipisp.ASN(666))
 	if err != nil {
-		log.Fatalf("Error looking up 4.2.2.2: %v", err)
+		log.Fatalf("lookup ASN 666: %v", err)
 	}
-	fmt.Printf("Resolved IP 4.2.2.2: %+v\n", resp)
-
-	resp, err = client.LookupASN(ipisp.ASN(666))
-	if err != nil {
-		log.Fatalf("Failed to lookup ASN 666: %v", err)
-	}
-	fmt.Printf("Resolved ASN 666: %+v\n", resp)
+	fmt.Printf("resolved ASN 666: %+v\n", resp)
 }

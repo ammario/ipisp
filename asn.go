@@ -1,10 +1,9 @@
 package ipisp
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 // ASN represents an Autonomous Systems Number.
@@ -16,7 +15,7 @@ func ParseASN(asn string) (ASN, error) {
 	// A special value from the API.
 	// More info: https://github.com/ammario/ipisp/issues/10.
 	if asn == "NA" {
-		return 0, nil
+		return -1, nil
 	}
 	// Make case insensitive
 	asn = strings.ToUpper(asn)
@@ -25,9 +24,11 @@ func ParseASN(asn string) (ASN, error) {
 	}
 
 	nn, err := strconv.Atoi(asn)
-	return ASN(nn), errors.Wrap(err, "failed to conv into to string")
+	if err != nil {
+		return -1, fmt.Errorf("parse %q: %w", asn, err)
+	}
+	return ASN(nn), nil
 }
-
 
 // String represents an ASN like `5544`` as `AS5544`.`
 func (a ASN) String() string {

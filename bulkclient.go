@@ -2,91 +2,213 @@ package ipisp
 
 import (
 	"bufio"
-	"golang.org/x/xerrors"
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
 	"net"
-	"sync"
+	"strconv"
+	"strings"
 	"time"
 )
 
-// BulkClient may be used to lookup a large amount of IPs or ASNs in a quick burst.
-// Calls to WriteIP and WriteASN do not return errors since they write the requests to a buffer.
-// The buffer is dispatched on the next call to Read.
-type BulkClient struct {
-	mu sync.Mutex
-
-	conn net.Conn
-	w    *bufio.Writer
-	sc   *bufio.Scanner
-}
-
-const (
-	cymruNetcatAddress = "whois.cymru.com:43"
+var (
+	ErrUnexpectedTokens = errors.New("an unexpect token was received while reading response")
 )
 
-var bulkEOL = []byte("\r\n")
+var (
+	bulkEOL = []byte("\r\n")
+)
 
-// DialBulkClient opens up a WHOIS connection to the service.
-func DialBulkClient() (*BulkClient, error) {
-	conn, err := net.DialTimeout("tcp", cymruNetcatAddress, Timeout)
+const (
+	netcatIPTokensLength  = 7
+	netcatASNTokensLength = 5
+	cymruNetcatAddress    = "whois.cymru.com:43"
+)
+
+// BulkClient uses the WHOIS service to conduct bulk lookups.
+type BulkClient struct {
+	Conn net.Conn
+}
+
+// DialBulkClient returns a connected WHOIS client.
+// This client should be used for bulk lookups.
+func DialBulkClient(ctx context.Context) (*BulkClient, error) {
+	var err error
+
+	client := &BulkClient{}
+	var d net.Dialer
+	client.Conn, err = d.DialContext(ctx, "tcp", cymruNetcatAddress)
 	if err != nil {
-		return nil, xerrors.Errorf("dial %s: %v", cymruNetcatAddress, err)
+		return nil, fmt.Errorf("dial: %w", err)
 	}
 
-	_ = conn.SetDeadline(time.Now().Add(time.Second * 10))
+	client.Conn.Write([]byte("begin"))
+	client.Conn.Write(bulkEOL)
+	client.Conn.Write([]byte("verbose"))
+	client.Conn.Write(bulkEOL)
 
-	bw := bufio.NewWriter(conn)
-	bw.Write([]byte("begin"))
-	bw.Write(bulkEOL)
-	bw.Write([]byte("verbose"))
-	bw.Write(bulkEOL)
+	sc := bufio.NewScanner(client.Conn)
 
-	err = bw.Flush()
-	if err != nil {
-		return nil, xerrors.Errorf("write begin message: %v", err)
-	}
-
-	sc := bufio.NewScanner(conn)
-
-	// Discard first hello line
+	// Discard first hello line.
 	sc.Scan()
 	if sc.Err() != nil {
-		_ = conn.Close()
-		return nil, xerrors.Errorf("discard first line: %v", sc.Err())
+		client.Conn.Close()
+		return nil, fmt.Errorf("scan: %w", err)
 	}
 
-	return &BulkClient{
-		conn: conn,
-		w:    bw,
-		sc:   sc,
-	}, nil
+	return client, nil
 }
 
-func (bc *BulkClient) WriteIP(ip string) {
-	bc.w.WriteString(ip)
-	bc.w.Write(bulkEOL)
+func (c *BulkClient) LookupIPs(ips ...net.IP) (resp []Response, err error) {
+	var (
+		w  = bufio.NewWriter(c.Conn)
+		sc = bufio.NewScanner(c.Conn)
+	)
+	resp = make([]Response, 0, len(ips))
+
+	for _, ip := range ips {
+		w.WriteString(ip.String())
+		w.Write(bulkEOL)
+		if err = w.Flush(); err != nil {
+			return resp, err
+		}
+	}
+
+	// Raw response
+	var raw []byte
+	var tokens [][]byte
+
+	var finished bool
+
+	// Read results
+	for !finished && sc.Scan() {
+		raw = sc.Bytes()
+		if bytes.HasPrefix(raw, []byte("Error: ")) {
+			return resp, errors.New(string(bytes.TrimSpace(bytes.TrimLeft(raw, "Error: "))))
+		}
+		tokens = bytes.Split(raw, []byte{'|'})
+
+		if len(tokens) != netcatIPTokensLength {
+			return resp, ErrUnexpectedTokens
+		}
+
+		// Trim excess whitespace from tokens
+		for i := range tokens {
+			tokens[i] = bytes.TrimSpace(tokens[i])
+		}
+
+		re := Response{}
+
+		// Read ASN
+		asns := strings.Split(
+			strings.TrimSpace(string(tokens[0])),
+			" ",
+		)
+		asn, err := strconv.Atoi(asns[0])
+		if err != nil {
+			return resp, fmt.Errorf("parse %v: %w", asns[0], err)
+		}
+
+		re.ASN = ASN(asn)
+
+		// Read IP
+		re.IP = net.ParseIP(string(tokens[1]))
+
+		// Read range
+		bgpPrefix := string(tokens[2])
+		// Account for 'NA' BGP Prefix responses from the API
+		// More info: https://github.com/ammario/ipisp/issues/13
+		if bgpPrefix == "NA" {
+			bgpPrefix = re.IP.String() + "/32"
+		}
+
+		_, re.Range, err = net.ParseCIDR(bgpPrefix)
+		if err != nil {
+			return resp, fmt.Errorf("parse cidr %q: %w", bgpPrefix, err)
+		}
+
+		// Read country
+		re.Country = string(bytes.TrimSpace(tokens[3]))
+		// Read registry
+		re.Registry = string(bytes.ToUpper(tokens[4]))
+		// Read allocated. Ignore error as a lot of entries don't have an allocated value.
+		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[5]))
+		// Read name
+		re.Name = string(tokens[6])
+
+		// Add to response slice
+		resp = append(resp, re)
+		if len(resp) == cap(resp) {
+			finished = true
+		}
+	}
+	return resp, err
 }
 
-func (bc *BulkClient) WriteASN(asn int) {
-	bc.w.WriteString(ASN(asn).String())
-	bc.w.Write(bulkEOL)
-}
+// LookupASNs looks up ASNs. Response IP and Range fields are zeroed
+func (c *BulkClient) LookupASNs(asns ...ASN) (resp []Response, err error) {
+	var (
+		w  = bufio.NewWriter(c.Conn)
+		sc = bufio.NewScanner(c.Conn)
+	)
+	resp = make([]Response, 0, len(asns))
 
-// Read returns a single response from the interface, whether or not the connection is still valid, and
-// the error.
-func (bc *BulkClient) Read() (*Response, bool, error) {
-	bc.w.Flush()
-}
+	for _, asn := range asns {
+		w.WriteString(asn.String())
+		w.Write(bulkEOL)
+		if err = w.Flush(); err != nil {
+			return resp, err
+		}
+	}
 
-// Close gracefully terminates the client.
-func (bc *BulkClient) Close() error {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
+	c.Conn.SetDeadline(time.Now().Add(time.Second*5 + (time.Second * time.Duration(len(asns)))))
 
-	// These are courtesy messages to indicate that the client disconnected normally. Thus, their errors are not
-	// important.
+	// Raw response
+	var raw []byte
+	var tokens [][]byte
+	var asn int
 
-	bc.conn.SetWriteDeadline(time.Now().Add(time.Second))
-	bc.conn.Write([]byte("end"))
-	bc.conn.Write(bulkEOL)
-	return bc.conn.Close()
+	var finished bool
+
+	// Read results
+	for !finished && sc.Scan() {
+		raw = sc.Bytes()
+		if bytes.HasPrefix(raw, []byte("Error: ")) {
+			return resp, fmt.Errorf("service error: %s", raw)
+		}
+		tokens = bytes.Split(raw, []byte{'|'})
+
+		if len(tokens) != netcatASNTokensLength {
+			return resp, ErrUnexpectedTokens
+		}
+
+		// Trim excess whitespace from tokens
+		for i := range tokens {
+			tokens[i] = bytes.TrimSpace(tokens[i])
+		}
+
+		re := Response{}
+
+		// Read ASN
+		if asn, err = strconv.Atoi(string(tokens[0])); err != nil {
+			return nil, fmt.Errorf("parse asn %q: %w", tokens[0], err)
+		}
+		re.ASN = ASN(asn)
+		// Read country
+		re.Country = string(tokens[1])
+		// Read registry
+		re.Registry = string(bytes.ToUpper(tokens[2]))
+		// Read allocated. Ignore error as a lot of entries don't have an allocated value.
+		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[3]))
+		// Read name
+		re.Name = string(tokens[4])
+
+		// Add to response slice
+		resp = append(resp, re)
+		if len(resp) == cap(resp) {
+			finished = true
+		}
+	}
+	return resp, err
 }

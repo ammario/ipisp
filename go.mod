@@ -1,4 +1,4 @@
-module github.com/ammario/ipisp
+module github.com/ammario/ipisp/v2
 
 require (
 	github.com/davecgh/go-spew v1.1.0
@@ -8,4 +8,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 )
 
-go 1.13
+go 1.17
