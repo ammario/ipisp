@@ -58,7 +58,7 @@ func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 			}
 		}
 
-		asnResponse, err := LookupASN(ret.ASN)
+		asnResponse, err := LookupASN(ctx, ret.ASN)
 		if err != nil {
 			return nil, fmt.Errorf("retrieve ASN (%s): %s", ret.ASN.String(), err.Error())
 		}
@@ -71,8 +71,9 @@ func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 	return nil, fmt.Errorf("no records found")
 }
 
-func LookupASN(asn ASN) (*Response, error) {
-	txts, err := net.LookupTXT(asn.String() + ".asn.cymru.com")
+func LookupASN(ctx context.Context, asn ASN) (*Response, error) {
+	var r net.Resolver
+	txts, err := r.LookupTXT(ctx, asn.String()+".asn.cymru.com")
 	if err != nil {
 		return nil, err
 	}

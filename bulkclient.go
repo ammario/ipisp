@@ -60,12 +60,15 @@ func DialBulkClient(ctx context.Context) (*BulkClient, error) {
 	return client, nil
 }
 
-func (c *BulkClient) LookupIPs(ips ...net.IP) (resp []Response, err error) {
+func (c *BulkClient) LookupIPs(ips ...net.IP) ([]Response, error) {
 	var (
 		w  = bufio.NewWriter(c.Conn)
 		sc = bufio.NewScanner(c.Conn)
 	)
-	resp = make([]Response, 0, len(ips))
+	var (
+		resp = make([]Response, 0, len(ips))
+		err  error
+	)
 
 	for _, ip := range ips {
 		w.WriteString(ip.String())
@@ -147,12 +150,15 @@ func (c *BulkClient) LookupIPs(ips ...net.IP) (resp []Response, err error) {
 }
 
 // LookupASNs looks up ASNs. Response IP and Range fields are zeroed
-func (c *BulkClient) LookupASNs(asns ...ASN) (resp []Response, err error) {
+func (c *BulkClient) LookupASNs(asns ...ASN) ([]Response, error) {
 	var (
 		w  = bufio.NewWriter(c.Conn)
 		sc = bufio.NewScanner(c.Conn)
 	)
-	resp = make([]Response, 0, len(asns))
+	var (
+		resp = make([]Response, 0, len(asns))
+		err  error
+	)
 
 	for _, asn := range asns {
 		w.WriteString(asn.String())
@@ -211,4 +217,8 @@ func (c *BulkClient) LookupASNs(asns ...ASN) (resp []Response, err error) {
 		}
 	}
 	return resp, err
+}
+
+func (c *BulkClient) Close() error {
+	return c.Conn.Close()
 }

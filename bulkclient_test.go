@@ -13,6 +13,7 @@ func TestWhoisClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial bulk client: %v", err)
 	}
+	defer client.Close()
 
 	t.Run("IPs", func(t *testing.T) {
 		// These are well-known IPs.

@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/ammario/ipisp"
+	"github.com/ammario/ipisp/v2"
 )
 
 func main() {
