@@ -1,41 +1,26 @@
 package ipisp
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
 const hexDigit = "0123456789abcdef"
 
-type dnsClient struct {
-}
-
-// NewDNSClient returns a DNS lookup client.
-// It is recommended to use this client for many individual lookups.
-func NewDNSClient() (Client, error) {
-	return &dnsClient{}, nil
-}
-
-func (c *dnsClient) LookupIPs(ips []net.IP) ([]Response, error) {
-	ret := make([]Response, 0, len(ips))
-
-	for _, ip := range ips {
-		resp, err := c.LookupIP(ip)
-		if err != nil {
-			return ret, err
-		}
-		ret = append(ret, *resp)
+// LookupIP looks up a single IP with the API.
+// The service recommends that bulk lookups use the BulkClient out of respect
+// for their server load.
+func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
+	var r net.Resolver
+	lookupName, err := formatDNSLookupName(ip)
+	if err != nil {
+		return nil, err
 	}
-	return ret, nil
-}
-
-func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
-	lookupName, err := c.getLookupName(ip)
-	txts, err := net.LookupTXT(lookupName)
+	txts, err := r.LookupTXT(ctx, lookupName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +28,7 @@ func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 	for _, txt := range txts {
 		values := strings.Split(txt, "|")
 		if len(values) != 5 {
-			return nil, fmt.Errorf("Received unrecognized response: %s", txt)
+			return nil, fmt.Errorf("unrecognized response: %s", txt)
 		}
 		for k := range values {
 			values[k] = strings.TrimSpace(values[k])
@@ -55,55 +40,40 @@ func (c *dnsClient) LookupIP(ip net.IP) (*Response, error) {
 		}
 
 		var err error
-		asn, err := parseASNs(values[0])
+		asn, err := ParseASN(values[0])
 		if err != nil {
-			return nil, errors.Wrapf(err, "Could not parse ASN (%s)", values[0])
+			return nil, fmt.Errorf("parse ASN %q: %w", values[0], err)
 		}
-		ret.ASN = asn[0]
-
+		ret.ASN = asn
 		ret.Country = strings.TrimSpace(values[2])
-
 		_, ret.Range, err = net.ParseCIDR(values[1])
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse Range (%s): %s", values[1], err)
+			return nil, fmt.Errorf("parse range (%s): %s", values[1], err)
 		}
 
 		if values[4] != "" { // There's not always an allocation date available :(
 			ret.AllocatedAt, err = time.Parse("2006-01-02", values[4])
 			if err != nil {
-				return nil, fmt.Errorf("Could not parse date (%s): %s", values[4], err)
+				return nil, fmt.Errorf("parse date (%s): %s", values[4], err)
 			}
 		}
 
-		asnResponse, err := c.LookupASN(ret.ASN)
+		asnResponse, err := LookupASN(ctx, ret.ASN)
 		if err != nil {
-			return nil, fmt.Errorf("Could not retrieve ASN (%s): %s", ret.ASN.String(), err.Error())
+			return nil, fmt.Errorf("retrieve ASN (%s): %s", ret.ASN.String(), err.Error())
 		}
 
-		ret.Name = asnResponse.Name
-
+		ret.ISPName = asnResponse.ISPName
 		return ret, nil
 
 	}
 
-	return nil, fmt.Errorf("No records found")
+	return nil, fmt.Errorf("no records found")
 }
 
-func (c *dnsClient) LookupASNs(asns []ASN) ([]Response, error) {
-	ret := make([]Response, len(asns))
-
-	for _, asn := range asns {
-		resp, err := c.LookupASN(asn)
-		if err != nil {
-			return ret, err
-		}
-		ret = append(ret, *resp)
-	}
-	return ret, nil
-}
-
-func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
-	txts, err := net.LookupTXT(asn.String() + ".asn.cymru.com")
+func LookupASN(ctx context.Context, asn ASN) (*Response, error) {
+	var r net.Resolver
+	txts, err := r.LookupTXT(ctx, asn.String()+".asn.cymru.com")
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +90,7 @@ func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
 		resp := &Response{
 			ASN:      asn,
 			Registry: strings.ToUpper(values[2]),
-			Name:     ParseName(values[4]),
+			ISPName:  values[4],
 		}
 
 		resp.Country = values[1]
@@ -135,14 +105,10 @@ func (c *dnsClient) LookupASN(asn ASN) (*Response, error) {
 		return resp, nil
 	}
 
-	return nil, fmt.Errorf("No records found")
+	return nil, fmt.Errorf("no records found")
 }
 
-func (c *dnsClient) Close() error {
-	return nil
-}
-
-func (c *dnsClient) getLookupName(ip net.IP) (string, error) {
+func formatDNSLookupName(ip net.IP) (string, error) {
 	switch {
 	case len(ip) == net.IPv4len || ip.To4() != nil:
 		ip = ip.To4()
@@ -156,7 +122,7 @@ func (c *dnsClient) getLookupName(ip net.IP) (string, error) {
 				b = append(b, hexDigit[v&0xf], sep)
 			}
 		}
-		return fmt.Sprintf("%s.origin6.asn.cymru.com", (b[:63])), nil
+		return fmt.Sprintf("%s.origin6.asn.cymru.com", b[:63]), nil
 	default:
 		return "", errors.New("invalid IP length")
 	}

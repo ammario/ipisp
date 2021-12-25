@@ -9,7 +9,7 @@ import (
 type Response struct {
 	IP          net.IP
 	ASN         ASN
-	Name        Name
+	ISPName     string
 	Country     string
 	Registry    string
 	Range       *net.IPNet

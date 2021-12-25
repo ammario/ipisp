@@ -13,8 +13,8 @@ func TestParseASN(t *testing.T) {
 		wantErr bool
 	}{
 		{"", args{"AS555"}, ASN(555), false},
-		{"", args{"AS"}, ASN(0), true},
-		{"", args{"ASDFASDF"}, ASN(0), true},
+		{"", args{"AS"}, ASN(-1), true},
+		{"", args{"ASDFASDF"}, ASN(-1), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
