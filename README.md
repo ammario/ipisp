@@ -24,5 +24,5 @@ fmt.Printf("ISP: %s\n", resp.ISPName)
 ```
 displays
 ```
-ISP: CTNOSC-ASN-666, US
+ISP: LEVEL3, US
 ```

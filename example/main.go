@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("lookup 4.2.2.2: %v", err)
 	}
-	fmt.Printf("resolved IP 4.2.2.2: %+v\n", resp)
+	fmt.Printf("ISP: %+v\n", resp.ISPName)
 
 	resp, err = ipisp.LookupASN(context.Background(), ipisp.ASN(666))
 	if err != nil {
