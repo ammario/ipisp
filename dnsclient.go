@@ -17,6 +17,9 @@ const hexDigit = "0123456789abcdef"
 func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 	var r net.Resolver
 	lookupName, err := formatDNSLookupName(ip)
+	if err != nil {
+		return nil, err
+	}
 	txts, err := r.LookupTXT(ctx, lookupName)
 	if err != nil {
 		return nil, err
@@ -25,7 +28,7 @@ func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 	for _, txt := range txts {
 		values := strings.Split(txt, "|")
 		if len(values) != 5 {
-			return nil, fmt.Errorf("Received unrecognized response: %s", txt)
+			return nil, fmt.Errorf("unrecognized response: %s", txt)
 		}
 		for k := range values {
 			values[k] = strings.TrimSpace(values[k])
@@ -45,23 +48,22 @@ func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 		ret.Country = strings.TrimSpace(values[2])
 		_, ret.Range, err = net.ParseCIDR(values[1])
 		if err != nil {
-			return nil, fmt.Errorf("Could not parse Range (%s): %s", values[1], err)
+			return nil, fmt.Errorf("parse range (%s): %s", values[1], err)
 		}
 
 		if values[4] != "" { // There's not always an allocation date available :(
 			ret.AllocatedAt, err = time.Parse("2006-01-02", values[4])
 			if err != nil {
-				return nil, fmt.Errorf("Could not parse date (%s): %s", values[4], err)
+				return nil, fmt.Errorf("parse date (%s): %s", values[4], err)
 			}
 		}
 
 		asnResponse, err := LookupASN(ret.ASN)
 		if err != nil {
-			return nil, fmt.Errorf("Could not retrieve ASN (%s): %s", ret.ASN.String(), err.Error())
+			return nil, fmt.Errorf("retrieve ASN (%s): %s", ret.ASN.String(), err.Error())
 		}
 
-		ret.Name = asnResponse.Name
-
+		ret.ISPName = asnResponse.ISPName
 		return ret, nil
 
 	}
@@ -87,7 +89,7 @@ func LookupASN(asn ASN) (*Response, error) {
 		resp := &Response{
 			ASN:      asn,
 			Registry: strings.ToUpper(values[2]),
-			Name:     values[4],
+			ISPName:  values[4],
 		}
 
 		resp.Country = values[1]

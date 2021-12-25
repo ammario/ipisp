@@ -135,7 +135,7 @@ func (c *BulkClient) LookupIPs(ips ...net.IP) (resp []Response, err error) {
 		// Read allocated. Ignore error as a lot of entries don't have an allocated value.
 		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[5]))
 		// Read name
-		re.Name = string(tokens[6])
+		re.ISPName = string(tokens[6])
 
 		// Add to response slice
 		resp = append(resp, re)
@@ -202,7 +202,7 @@ func (c *BulkClient) LookupASNs(asns ...ASN) (resp []Response, err error) {
 		// Read allocated. Ignore error as a lot of entries don't have an allocated value.
 		re.AllocatedAt, _ = time.Parse("2006-01-02", string(tokens[3]))
 		// Read name
-		re.Name = string(tokens[4])
+		re.ISPName = string(tokens[4])
 
 		// Add to response slice
 		resp = append(resp, re)
