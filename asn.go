@@ -23,6 +23,11 @@ func ParseASN(asn string) (ASN, error) {
 		asn = asn[2:]
 	}
 
+	// Trimming multi asn value to single value
+	// multi asn causes strconv.Atoi conversion error
+	// More info: https://github.com/ammario/ipisp/issues/22
+	asn = strings.Split(asn, " ")[0]
+	
 	nn, err := strconv.Atoi(asn)
 	if err != nil {
 		return -1, fmt.Errorf("parse %q: %w", asn, err)
