@@ -11,16 +11,21 @@ import (
 
 const hexDigit = "0123456789abcdef"
 
+var DefaultDNSClient = &DNSClient{Resolver: net.DefaultResolver}
+
+type DNSClient struct {
+	Resolver *net.Resolver
+}
+
 // LookupIP looks up a single IP with the API.
 // The service recommends that bulk lookups use the BulkClient out of respect
 // for their server load.
-func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
-	var r net.Resolver
+func (c *DNSClient) LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 	lookupName, err := formatDNSLookupName(ip)
 	if err != nil {
 		return nil, err
 	}
-	txts, err := r.LookupTXT(ctx, lookupName)
+	txts, err := c.Resolver.LookupTXT(ctx, lookupName)
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +76,8 @@ func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
 	return nil, fmt.Errorf("no records found")
 }
 
-func LookupASN(ctx context.Context, asn ASN) (*Response, error) {
-	var r net.Resolver
-	txts, err := r.LookupTXT(ctx, asn.String()+".asn.cymru.com")
+func (c *DNSClient) LookupASN(ctx context.Context, asn ASN) (*Response, error) {
+	txts, err := c.Resolver.LookupTXT(ctx, asn.String()+".asn.cymru.com")
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +110,17 @@ func LookupASN(ctx context.Context, asn ASN) (*Response, error) {
 	}
 
 	return nil, fmt.Errorf("no records found")
+}
+
+// LookupIP looks up a single IP with the API.
+// The service recommends that bulk lookups use the BulkClient out of respect
+// for their server load.
+func LookupIP(ctx context.Context, ip net.IP) (*Response, error) {
+	return DefaultDNSClient.LookupIP(ctx, ip)
+}
+
+func LookupASN(ctx context.Context, asn ASN) (*Response, error) {
+	return DefaultDNSClient.LookupASN(ctx, asn)
 }
 
 func formatDNSLookupName(ip net.IP) (string, error) {
